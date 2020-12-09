@@ -229,7 +229,7 @@ int main()
 				playerToCheckpoint = Vector2::Normalize(playerToCheckpoint);
 				playerToOpponent = Vector2::Normalize(playerToOpponent);
 				//verify that the opponent is not in front of me when I want to boost
-				if ((abs(Vector2::Dot(playerToCheckpoint, playerToOpponent)) < 0.8f) || opponentDist < BOOSTINGSAFEZONE)
+				if ((abs(Vector2::Dot(playerToCheckpoint, playerToOpponent)) < 0.8f) || opponentDist > BOOSTINGSAFEZONE)
 				{
 					isBoosting = true;
 					hasUsedBoost = true;
