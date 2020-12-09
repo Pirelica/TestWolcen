@@ -10,10 +10,15 @@ using namespace std;
 #define CHECKPOINT_RADIUS 600
 #define POD_RADIUS 400
 
-#define BRAKING_DISTANCE 1200 //checkpointRadius * 2
+#define BRAKING_DISTANCE 2400 //distance to slow down when approaching in a straight line
+#define TURNING_DISTANCE 2400 //distance to start slowing down when using steering
 
-#define THRUST_MINIMUM 0
-#define THRUST_MAXIMUM 100
+#define STEERING_FACTOR 150.0f
+#define BOOSTINGSAFEZONE 4000 //distance where the pod can boost without hitting the opponent
+
+#define THRUST_MINIMUM 0.0f
+#define THRUST_MAXIMUM 100.0f
+#define THRUST_SLOW 10.0f
 
 #define PI 3.14159265f
 #define DEG2RAD(angle) ((angle) * PI / 180.0f)
@@ -132,13 +137,13 @@ private:
 	int m_nbOfCheckpoints = 0;
 
 public:
-	void AddNewCheckpoint(const int _x,const int _y);
+	void AddNewCheckpoint(const int _x, const int _y);
 	inline bool IsFirstLapOver() const { return m_areAllCheckpointsFound; }
 	inline int GetBiggestDistance() const { return m_biggestDistance; }
 	void CheckBiggestDistance(const int _dist); //keep track of the biggest distance between checkpoints to use the boost at the best time
 };
 
-void CheckpointManager::AddNewCheckpoint(const int _x,const int _y)
+void CheckpointManager::AddNewCheckpoint(const int _x, const int _y)
 {
 	//avoid adding new checkpoints if the first lap is over
 	if (m_areAllCheckpointsFound)
@@ -191,7 +196,6 @@ int main()
 	bool isBoosting = false;
 	bool hasUsedBoost = false;
 	CheckpointManager checkpointManager;
-
 	// game loop
 	while (1)
 	{
@@ -207,11 +211,12 @@ int main()
 		cin.ignore();
 		cin >> opponentX >> opponentY;
 		cin.ignore();
+		cerr << "Distance = " << nextCheckpointDist << endl;
 		int opponentDist = (int)sqrt((double)pow((opponentX - x), 2) + (double)pow((opponentY - y), 2));
 		checkpointManager.AddNewCheckpoint(nextCheckpointX, nextCheckpointY);
 		checkpointManager.CheckBiggestDistance(nextCheckpointDist);
 		thrust = 100.0f;
-		if (abs(nextCheckpointAngle) < 5)
+		if (abs(nextCheckpointAngle) == 0)
 		{
 			cerr << "Small angle" << endl;
 			thrust = THRUST_MAXIMUM;
@@ -224,7 +229,7 @@ int main()
 				playerToCheckpoint = Vector2::Normalize(playerToCheckpoint);
 				playerToOpponent = Vector2::Normalize(playerToOpponent);
 				//verify that the opponent is not in front of me when I want to boost
-				if (abs(Vector2::Dot(playerToCheckpoint, playerToOpponent)) < 0.8f)
+				if ((abs(Vector2::Dot(playerToCheckpoint, playerToOpponent)) < 0.8f) || opponentDist < BOOSTINGSAFEZONE)
 				{
 					isBoosting = true;
 					hasUsedBoost = true;
@@ -233,8 +238,9 @@ int main()
 			//slow down depending on the distance when the checkpoint is close to prepare turning towards the next checkpoint
 			if (nextCheckpointDist < BRAKING_DISTANCE)
 			{
+				cerr << "BRAKING_DISTANCE" << endl;
 				thrust = 100.0f * ((float)nextCheckpointDist / (float)BRAKING_DISTANCE);
-				clip(thrust, 10.0f, 100.0f);
+				clip(thrust, THRUST_SLOW, THRUST_MAXIMUM);
 			}
 		}
 		else if (abs(nextCheckpointAngle) > 90)
@@ -251,27 +257,34 @@ int main()
 			currentDirection = Vector2::Normalize(currentDirection);
 
 			Vector2 steering = (directionToCheckpoint - currentDirection);
-			steering = Vector2::Normalize(steering) * 100.0f;
+			steering = Vector2::Normalize(steering) * STEERING_FACTOR;
 
 			nextCheckpointX += (int)steering.GetX();
 			nextCheckpointY += (int)steering.GetY();
 
 			//slow down depending on the angle when the checkpoint is close to adjust my trajectory towards the checkpoint
-			if (nextCheckpointDist < BRAKING_DISTANCE)
+			if (nextCheckpointDist < TURNING_DISTANCE)
 			{
+				cerr << "TURNING DISTANCE" << endl;
 				thrust = thrust * ((90.0f - (float)abs(nextCheckpointAngle)) / 90.0f);
+				clip(thrust, THRUST_SLOW, THRUST_MAXIMUM);
 			}
 		}
 
 		if (isBoosting == true)
 		{
-			cout << nextCheckpointX << " " << nextCheckpointY << " " << "BOOST" << endl;
+			cout << nextCheckpointX << " " << nextCheckpointY << " " << "BOOST" << " " << "BOOST" << endl;
 			isBoosting = false;
+		}
+		//Use shield if the pod is close to both the checkpoint and the opponent
+		else if (opponentDist < POD_RADIUS * 2 && nextCheckpointDist < CHECKPOINT_RADIUS * 2)
+		{
+			cout << nextCheckpointX << " " << nextCheckpointY << " " << "SHIELD" << " " << "SHIELD" << endl;
 		}
 		else
 		{
 			//make sure that the thrust remains between 0 and 100
-			thrust = clip(thrust, 0, 100); 
+			thrust = clip(thrust, THRUST_MINIMUM, THRUST_MAXIMUM);
 			cout << nextCheckpointX << " " << nextCheckpointY << " " << (int)thrust << " " << thrust << endl;
 		}
 	}
