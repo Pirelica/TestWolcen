@@ -1,0 +1,3 @@
+﻿  BronzeToSilver.cpp
+WoodToBronze.obj : error LNK2005: _main déjà défini(e) dans BronzeToSilver.obj
+C:\Users\Emma Queva\Documents\GitHub\TestWolcen\RenduCode\Debug\RenduCode.exe : fatal error LNK1169: un ou plusieurs symboles définis à différentes reprises ont été rencontrés
