@@ -17,7 +17,7 @@ using namespace std;
 #define BOOSTINGSAFEZONE 4000 //distance where the pod can boost without hitting the opponent
 
 #define THRUST_MINIMUM 0.0f
-#define THRUST_MAXIMUM 100.0f
+#define THRUST_MAXIMUM 100
 #define THRUST_SLOW 10.0f
 
 #define SHIELD_COOLDOWN 4 // turn of activation + 3 turns of inactivity
@@ -193,10 +193,10 @@ void Pod::UpdateInfo(Checkpoint* _checkpoints)
 		m_checkpointsPassed++;
 	}
 	cin.ignore();
-	Vector2 checkpointPos(_checkpoints[m_nextCheckpointId].x, _checkpoints[m_nextCheckpointId].y);
+	Vector2 checkpointPos((float)_checkpoints[m_nextCheckpointId].x, (float)_checkpoints[m_nextCheckpointId].y);
 	m_distanceToCheckpoint = Vector2::Distance(m_pos, checkpointPos);
-	m_destination.m_x = _checkpoints[m_nextCheckpointId].x;
-	m_destination.m_y = _checkpoints[m_nextCheckpointId].y;
+	m_destination.m_x = (float)_checkpoints[m_nextCheckpointId].x;
+	m_destination.m_y = (float)_checkpoints[m_nextCheckpointId].y;
 }
 
 void Pod::GetFirstPod(Pod* _myPods)
@@ -228,22 +228,14 @@ void Pod::GetFirstPod(Pod* _myPods)
 
 void Pod::UpdateAngleToCheckpoint(Checkpoint _cp)
 {
-
-	// Vector2 podForward(abs(m_pos.m_x + m_speed.m_x), abs(m_pos.m_y + m_speed.m_y));
-	// podForward = Vector2::Normalize(podForward);
 	Vector2 podToCheckpoint(_cp.x - m_pos.m_x, _cp.y - m_pos.m_y);
 	podToCheckpoint = Vector2::Normalize(podToCheckpoint);
 	float a = acos(podToCheckpoint.m_x);
+	RAD2DEG(a);
 	//a -= (float)m_angle;
-	m_angleToCheckpoint = abs(a);
+	m_angleToCheckpoint = (int)(abs(a));
 	cerr << "Angle = " << m_angleToCheckpoint << endl;
-	// m_angleToCheckpoint = clamp(m_angleToCheckpoint, -180, 180);
-	// m_angleToCheckpoint = m_angleToCheckpoint % 180;
-	// m_angleToCheckpoint = abs(m_angleToCheckpoint);
-	// Vector2 podToCheckpoint(_cp.x - m_pos.m_x, _cp.y - m_pos.m_y);
-	// podToCheckpoint = Vector2::Normalize(podToCheckpoint);
-	// Vector2 forward = Vector2::Normalize(m_speed);
-	// m_angleToCheckpoint = Vector2::GetAngle(forward, podToCheckpoint);
+	
 }
 
 void Pod::ComputeShield(Pod* _myPods, Pod* _opponents, int _index)
@@ -294,7 +286,7 @@ void Pod::UpdateThrust(Pod* enemies, int _target, Checkpoint* _checkpoints, int 
 {
 	if (!m_isRacer)
 	{
-		Vector2 checkpointDest(_checkpoints[enemies[_target].m_nextCheckpointId].x, _checkpoints[enemies[_target].m_nextCheckpointId].y);
+		Vector2 checkpointDest((float)_checkpoints[enemies[_target].m_nextCheckpointId].x, (float)_checkpoints[enemies[_target].m_nextCheckpointId].y);
 		m_destination = checkpointDest;
 	}
 
@@ -314,7 +306,7 @@ void Pod::UpdateThrust(Pod* enemies, int _target, Checkpoint* _checkpoints, int 
 				for (int i = 0; i < 2; i++)
 				{
 					Vector2 playerToOpponent((float)(enemies[i].m_pos.m_x - m_pos.m_x), (float)(enemies[i].m_pos.m_y - m_pos.m_y));
-					int opponentDist = Vector2::Length(playerToOpponent);
+					int opponentDist = (int)(Vector2::Length(playerToOpponent));
 					playerToOpponent = Vector2::Normalize(playerToOpponent);
 					if (abs(Vector2::Dot(playerToCheckpoint, playerToOpponent)) > 0.8f && opponentDist < BOOSTINGSAFEZONE)
 					{
@@ -332,19 +324,14 @@ void Pod::UpdateThrust(Pod* enemies, int _target, Checkpoint* _checkpoints, int 
 		//slow down depending on the distance when the checkpoint is close to prepare turning towards the next checkpoint
 		if (checkpointDist < BRAKING_DISTANCE)
 		{
-			// Vector2 forward(m_speed.m_x, m_speed.m_y);
-			// forward = Vector2::Normalize(forward);
-			// cerr << "BRAKING" << endl;
-			// m_thrust = 100.0f * ((float)checkpointDist / (float)BRAKING_DISTANCE);
-			// clip(m_thrust, THRUST_SLOW, THRUST_MAXIMUM);
 			if (m_nextCheckpointId == _cpNb - 1)
 			{
-				Vector2 newDestination(_checkpoints[0].x, _checkpoints[0].y);
+				Vector2 newDestination((float)_checkpoints[0].x, (float)_checkpoints[0].y);
 				m_destination = newDestination;
 			}
 			else
 			{
-				Vector2 newDestination(_checkpoints[m_nextCheckpointId + 1].x, _checkpoints[m_nextCheckpointId + 1].y);
+				Vector2 newDestination((float)_checkpoints[m_nextCheckpointId + 1].x, (float)_checkpoints[m_nextCheckpointId + 1].y);
 				m_destination = newDestination;
 			}
 			m_thrust = 50;
@@ -353,15 +340,15 @@ void Pod::UpdateThrust(Pod* enemies, int _target, Checkpoint* _checkpoints, int 
 	else if (abs(m_angleToCheckpoint) > 90)
 	{
 		cerr << "HARD TURN = " << m_angleToCheckpoint << endl;
-		m_thrust = 0.0f;
+		m_thrust = 0;
 	}
 	else
 	{
 		//slow down depending on the angle when the checkpoint is close to adjust my trajectory towards the checkpoint
 
 		cerr << "STEERING TURN" << endl;
-		m_thrust = m_thrust * ((90.0f - (float)abs(m_angleToCheckpoint)) / 90.0f) - 10;
-		clip(m_thrust, 10.0f, 100.0f);
+		m_thrust = m_thrust * ((90 - abs(m_angleToCheckpoint)) / 90) - 10;
+		m_thrust = clamp(m_thrust, 10, THRUST_MAXIMUM);
 
 	}
 }
@@ -388,9 +375,6 @@ void Pod::GiveOutput()
 
 int main()
 {
-	float thrust = 100.0f;
-	bool isBoosting = false;
-	bool hasUsedBoost = false;
 	//new inputs from the gold league
 	int laps;
 	int checkpointCount;
